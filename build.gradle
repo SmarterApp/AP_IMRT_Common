@@ -108,3 +108,51 @@ task unitTest (type: Test) {
     exclude '**/*IntegrationTest.class'
     exclude '**/*RepositoryTest.class'
 }
+
+/***************************
+ * maven publishing
+ ***************************/
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+    from sourceSets.test.allJava
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            artifact sourceJar {
+                classifier "sources"
+            }
+        }
+    }
+}
+
+artifactory {
+    contextUrl = artifactoryUrl
+
+    publish {
+        repository {
+            repoKey = project.version.toString().contains('-SNAPSHOT') ? artifactorySnapshotPublish : artifactoryReleasePublish
+            username = artifactoryUser
+            password = artifactoryPassword
+            maven = true
+        }
+        defaults {
+            publications('mavenJava')
+        }
+    }
+}
+
+tasks.artifactoryPublish.dependsOn build
+
+/**
+ * Clover configuration
+ */
+clover {
+    report {
+        html = true
+    }
+}
