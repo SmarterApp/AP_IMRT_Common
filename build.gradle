@@ -29,6 +29,7 @@ bootRepackage {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven { url "https://airdev.jfrog.io/airdev/libs-releases/" }
 }
