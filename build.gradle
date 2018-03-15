@@ -1,0 +1,158 @@
+import java.text.SimpleDateFormat
+
+buildscript {
+    ext {
+        springBootVersion = '1.5.9.RELEASE'
+    }
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'io.github.robwin:jgitflow-gradle-plugin:0.5.0'
+    }
+}
+
+plugins {
+    id 'java'
+    id 'findbugs'
+    id 'org.springframework.boot' version '1.5.9.RELEASE'
+    id 'jacoco'
+    id 'maven-publish'
+    id 'com.jfrog.artifactory' version '4.4.14'
+    id 'com.bmuschko.clover' version '2.2.0'
+}
+
+bootRepackage {
+    enabled = false
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url "https://airdev.jfrog.io/airdev/libs-releases/" }
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+configurations {
+    // Exclude logback, we will use log4j
+    compile.exclude module: 'spring-boot-starter-logging'
+    // This is pulled in from ap-common, we don't want security
+    // on our endpoints, at least for now
+    compile.exclude module: 'spring-boot-starter-security'
+
+    // Avoid having to list the findbugs annotations twice
+    testCompile.extendsFrom compileOnly
+}
+
+dependencies {
+    compileOnly 'com.google.code.findbugs:annotations:3.0.1'
+    compile 'org.hibernate:hibernate-java8:5.0.12.Final'
+    compile 'org.opentestsystem.ap:ap-common:0.3.26'
+    compile 'org.springframework.boot:spring-boot-starter-log4j2'
+    compile 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // Type mappings for hibernate -> PostgreSQL Json
+    compile 'com.vladmihalcea:hibernate-types-5:2.0.0'
+    clover 'org.openclover:clover:4.2.0'
+    testCompile 'org.springframework.boot:spring-boot-starter-test'
+    testCompile 'org.assertj:assertj-core:3.9.1'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Edgware.RELEASE"
+    }
+}
+
+/***************************
+ * build information
+ ***************************/
+
+springBoot {
+    buildInfo {
+        // Generate extra build info.
+        additionalProperties = [
+                by: System.properties['user.name'],
+                time: buildTime(),
+        ]
+    }
+}
+
+// Display human readable build time, instead of epoch
+def buildTime() {
+    final dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ")
+    dateFormat.format(new Date())
+}
+
+/***************************
+ * FindBugs
+ ***************************/
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+findbugs {
+    excludeFilter = file("$rootProject.projectDir/config/findbugs/excludeFilter.xml")
+}
+
+
+/**
+ * Unit Testing task, to avoid running slower integration tests
+ */
+task unitTest (type: Test) {
+    exclude '**/*IntegrationTest.class'
+    exclude '**/*RepositoryTest.class'
+}
+
+/***************************
+ * maven publishing
+ ***************************/
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+    from sourceSets.test.allJava
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            artifact sourceJar {
+                classifier "sources"
+            }
+        }
+    }
+}
+
+artifactory {
+    contextUrl = artifactoryUrl
+
+    publish {
+        repository {
+            repoKey = project.version.toString().contains('-SNAPSHOT') ? artifactorySnapshotPublish : artifactoryReleasePublish
+            username = artifactoryUser
+            password = artifactoryPassword
+            maven = true
+        }
+        defaults {
+            publications('mavenJava')
+        }
+    }
+}
+
+tasks.artifactoryPublish.dependsOn build
+
+/**
+ * Clover configuration
+ */
+clover {
+    report {
+        html = true
+    }
+}
