@@ -23,6 +23,8 @@ plugins {
     id 'com.bmuschko.clover' version '2.2.0'
 }
 
+apply plugin: 'io.github.robwin.jgitflow'
+
 bootRepackage {
     enabled = false
 }
