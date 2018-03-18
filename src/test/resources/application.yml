@@ -1,0 +1,16 @@
+test:
+  # Used to conditionally create certain beans during testing
+  enabled: true
+logging:
+  level:
+    org.opentestsystem: DEBUG
+    org.gitlab4j: INFO
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/test"
+
