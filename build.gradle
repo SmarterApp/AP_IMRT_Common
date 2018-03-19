@@ -24,7 +24,6 @@ plugins {
 }
 
 apply plugin: 'io.github.robwin.jgitflow'
-apply plugin: 'maven'
 
 bootRepackage {
     enabled = false
